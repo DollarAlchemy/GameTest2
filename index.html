@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Grimoire Wars — Arcane Bullet Hell</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════
+   BASE & RESET
+═══════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold:     #c9a84c;
+  --gold-b:   #f0d070;
+  --gold-d:   #5a3f10;
+  --deep:     #060412;
+  --text:     #e8ddb5;
+  --text-d:   #6a5a30;
+  --ui-font:  'Cinzel', serif;
+  --bd-font:  'Crimson Pro', Georgia, serif;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: #060412;
+  color: var(--text);
+  font-family: var(--bd-font);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ═══════════════════════════════════════
+   SCREENS (SELECT, GAME, DEATH)
+═══════════════════════════════════════ */
+.screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 10;
+  transition: opacity 0.4s ease;
+}
+.screen.hidden { opacity: 0; pointer-events: none; }
+
+/* ── SELECT SCREEN ── */
+#selectScreen {
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, #1a0a3a 0%, #060412 70%);
+  gap: 28px; padding: 20px;
+}
+
+.select-title-sub {
+  font-family: var(--ui-font); font-size: 11px;
+  letter-spacing: 0.5em; color: var(--text-d);
+  text-transform: uppercase;
+}
+
+.select-title {
+  font-family: var(--ui-font);
+  font-size: clamp(2rem, 6vw, 3.8rem);
+  font-weight: 900;
+  color: var(--gold-b);
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 30px rgba(200,160,60,0.7), 0 0 80px rgba(200,160,60,0.2);
+  text-align: center;
+  line-height: 1.1;
+}
+
+.select-prompt {
+  font-family: var(--ui-font); font-size: 12px;
+  color: var(--text-d); letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Mage cards grid */
+#mageGrid {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  justify-content: center; max-width: 900px;
+}
+
+.mage-card {
+  background: rgba(10,6,30,0.9);
+  border: 1px solid var(--gold-d);
+  border-radius: 12px;
+  padding: 20px 18px;
+  width: clamp(160px, 26vw, 220px);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  text-align: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mage-card:hover, .mage-card.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 24px rgba(200,160,60,0.4), inset 0 0 16px rgba(200,160,60,0.06);
+  transform: translateY(-3px);
+}
+
+.mage-emoji { font-size: 52px; display: block; margin-bottom: 10px; line-height: 1; }
+.mage-name  {
+  font-family: var(--ui-font); font-size: 13px;
+  color: var(--gold-b); letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.mage-title {
+  font-size: 11px; color: var(--text-d);
+  font-style: italic; margin-bottom: 10px;
+}
+.mage-desc  { font-size: 11px; color: var(--text); line-height: 1.5; margin-bottom: 12px; }
+
+.mage-stats { display: flex; flex-direction: column; gap: 4px; }
+.stat-row   { display: flex; align-items: center; gap: 6px; font-size: 9px; color: var(--text-d); font-family: var(--ui-font); letter-spacing: 0.06em; }
+.stat-pips  { display: flex; gap: 2px; }
+.pip { width: 8px; height: 6px; border-radius: 1px; background: var(--gold-d); }
+.pip.filled { background: var(--gold); box-shadow: 0 0 4px rgba(200,160,60,0.6); }
+
+.mage-special {
+  margin-top: 10px; padding: 5px 8px;
+  background: rgba(200,160,60,0.08);
+  border: 1px solid var(--gold-d); border-radius: 4px;
+  font-size: 9px; color: var(--gold); font-family: var(--ui-font);
+  letter-spacing: 0.05em;
+}
+
+/* Start button */
+#startBtn {
+  font-family: var(--ui-font); font-size: 14px;
+  letter-spacing: 0.12em; padding: 14px 40px;
+  background: rgba(10,6,30,0.95);
+  border: 1px solid var(--gold); color: var(--gold-b);
+  border-radius: 6px; cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.1s;
+  text-shadow: 0 0 8px rgba(200,160,60,0.5);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  animation: pulseBorder 2s ease infinite;
+}
+@keyframes pulseBorder {
+  0%,100% { box-shadow: 0 0 10px rgba(200,160,60,0.3); }
+  50%      { box-shadow: 0 0 24px rgba(200,160,60,0.7); }
+}
+#startBtn:hover { transform: scale(1.04); }
+#startBtn:active { transform: scale(0.97); }
+
+/* divider */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; max-width: 500px;
+}
+.divider-line { flex:1; height:1px; background: linear-gradient(90deg, transparent, var(--gold-d), transparent); }
+.divider-gem  { width:7px; height:7px; background:var(--gold); transform:rotate(45deg); box-shadow:0 0 6px rgba(200,160,60,0.5); }
+
+/* ── GAME CANVAS SCREEN ── */
+#gameScreen {
+  background: #000; padding: 0;
+  justify-content: flex-start; align-items: flex-start;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100vw; height: 100vh;
+  touch-action: none;
+}
+
+/* ── HUD overlay on game canvas ── */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 10px 14px; z-index: 20;
+  pointer-events: none;
+}
+
+.hud-left, .hud-right { display: flex; flex-direction: column; gap: 5px; }
+
+.hud-label {
+  font-family: var(--ui-font); font-size: 8px;
+  letter-spacing: 0.15em; color: var(--text-d);
+  text-transform: uppercase;
+}
+
+.hud-val {
+  font-family: var(--ui-font); font-size: 18px;
+  color: var(--gold-b);
+  text-shadow: 0 0 8px rgba(200,160,60,0.6);
+  line-height: 1;
+}
+
+/* HP hearts */
+#hearts { display: flex; gap: 3px; font-size: 18px; line-height: 1; }
+
+/* Mana bar */
+#manaWrap { display: flex; flex-direction: column; gap: 2px; }
+#manaBar  {
+  width: 120px; height: 6px;
+  background: rgba(0,0,0,0.4); border-radius: 3px;
+  border: 1px solid rgba(100,140,255,0.3); overflow: hidden;
+}
+#manaFill { height: 100%; background: linear-gradient(90deg, #3355cc, #88aaff); border-radius: 2px; transition: width 0.15s; }
+
+/* Special ability indicator */
+#specialReady {
+  font-family: var(--ui-font); font-size: 9px;
+  color: #aaffaa; letter-spacing: 0.08em;
+}
+
+/* Wave / score centre top */
+#hudCenter {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  text-align: center; z-index: 20; pointer-events: none;
+}
+#waveLabel {
+  font-family: var(--ui-font); font-size: 10px;
+  color: var(--text-d); letter-spacing: 0.2em; text-transform: uppercase;
+}
+#waveVal {
+  font-family: var(--ui-font); font-size: 22px;
+  color: var(--gold-b); text-shadow: 0 0 12px rgba(200,160,60,0.6); line-height: 1;
+}
+#scoreVal {
+  font-family: var(--ui-font); font-size: 13px;
+  color: var(--text-d); letter-spacing: 0.05em;
+}
+
+/* Wave announce banner */
+#waveBanner {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-family: var(--ui-font); font-size: clamp(1.4rem, 4vw, 2.4rem);
+  color: var(--gold-b); text-shadow: 0 0 30px rgba(200,160,60,0.9);
+  text-align: center; pointer-events: none; z-index: 30;
+  opacity: 0; transition: opacity 0.3s;
+  letter-spacing: 0.08em;
+}
+#waveBanner.show { opacity: 1; }
+
+/* Controls hint */
+#controlsBar {
+  position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; color: var(--text-d); font-family: var(--ui-font);
+  letter-spacing: 0.07em; text-align: center; pointer-events: none; z-index: 20;
+}
+
+/* Mobile joystick zones */
+#touchLeft, #touchRight {
+  position: fixed; bottom: 0; width: 50%; height: 45%;
+  z-index: 15; display: none;
+}
+#touchLeft  { left: 0; }
+#touchRight { right: 0; }
+
+/* ── DEATH SCREEN ── */
+#deathScreen {
+  background: rgba(6,4,18,0.94);
+  backdrop-filter: blur(8px);
+  gap: 20px; padding: 24px;
+  text-align: center;
+}
+
+#deathIcon { font-size: 72px; animation: deathBounce 0.6s ease both; }
+@keyframes deathBounce {
+  0%   { transform: scale(0) rotate(-20deg); opacity:0; }
+  70%  { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); opacity:1; }
+}
+
+#deathTitle {
+  font-family: var(--ui-font); font-size: clamp(1.8rem,5vw,3.2rem);
+  font-weight: 900; color: #ff4444;
+  text-shadow: 0 0 30px rgba(255,60,60,0.7);
+}
+
+#deathMsg { font-size: 15px; color: var(--text-d); font-style: italic; max-width: 340px; line-height: 1.6; }
+
+#deathStats {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+}
+.dstat {
+  background: rgba(14,10,30,0.8); border: 1px solid var(--gold-d);
+  border-radius: 6px; padding: 8px 18px; text-align: center;
+}
+.dstat-l { font-family: var(--ui-font); font-size: 7.5px; color: var(--text-d); letter-spacing:.1em; display:block; }
+.dstat-v { font-family: var(--ui-font); font-size: 22px; color: var(--gold-b); }
+
+.death-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+.btn {
+  font-family: var(--ui-font); font-size: 12px; letter-spacing: .1em;
+  padding: 12px 28px; background: rgba(10,6,30,0.95);
+  border: 1px solid var(--gold); color: var(--gold-b);
+  border-radius: 6px; cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.1s;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.btn:hover { box-shadow: 0 0 18px rgba(200,160,60,0.5); }
+.btn:active { transform: scale(0.96); }
+.btn.secondary { border-color: var(--gold-d); color: var(--text-d); }
+.btn.secondary:hover { border-color: var(--gold); color: var(--gold-b); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SELECT SCREEN
+═══════════════════════════════════════ -->
+<div id="selectScreen" class="screen">
+  <div class="select-title-sub">✦ &nbsp; Enter the &nbsp; ✦</div>
+  <div class="select-title">Grimoire Wars</div>
+
+  <div class="divider"><div class="divider-line"></div><div class="divider-gem"></div><div class="divider-line"></div></div>
+
+  <div class="select-prompt">Choose your mage</div>
+
+  <div id="mageGrid">
+
+    <!-- PYROMANCER -->
+    <div class="mage-card" data-mage="pyro">
+      <span class="mage-emoji">🧙‍♂️</span>
+      <div class="mage-name">Pyromancer</div>
+      <div class="mage-title">Master of Flame</div>
+      <div class="mage-desc">Triple spread shot that fans out across the arena. High damage, wide coverage.</div>
+      <div class="mage-stats">
+        <div class="stat-row">DMG
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip"></div></div>
+        </div>
+        <div class="stat-row">SPD
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="stat-row">HP
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+      </div>
+      <div class="mage-special">🔥 SPECIAL — Inferno Ring<br>Burst of fire in all directions</div>
+    </div>
+
+    <!-- FROSTWEAVER -->
+    <div class="mage-card" data-mage="frost">
+      <span class="mage-emoji">🧝‍♀️</span>
+      <div class="mage-name">Frostweaver</div>
+      <div class="mage-title">Mistress of Ice</div>
+      <div class="mage-desc">Piercing ice lance cuts through multiple enemies. Slower fire rate, massive single-target damage.</div>
+      <div class="mage-stats">
+        <div class="stat-row">DMG
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div></div>
+        </div>
+        <div class="stat-row">SPD
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="stat-row">HP
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip"></div></div>
+        </div>
+      </div>
+      <div class="mage-special">❄️ SPECIAL — Freeze Nova<br>Slows all enemies for 3 seconds</div>
+    </div>
+
+    <!-- STORMCALLER -->
+    <div class="mage-card" data-mage="storm">
+      <span class="mage-emoji">🧙‍♀️</span>
+      <div class="mage-name">Stormcaller</div>
+      <div class="mage-title">Herald of Thunder</div>
+      <div class="mage-desc">Rapid-fire chain lightning bounces between nearby enemies. Low damage per hit, insane speed.</div>
+      <div class="mage-stats">
+        <div class="stat-row">DMG
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="stat-row">SPD
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div><div class="pip filled"></div></div>
+        </div>
+        <div class="stat-row">HP
+          <div class="stat-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+      </div>
+      <div class="mage-special">⚡ SPECIAL — Lightning Storm<br>Screen-wide chain hits all enemies</div>
+    </div>
+
+  </div><!-- end mageGrid -->
+
+  <button id="startBtn">✦ Enter the Arena ✦</button>
+
+  <div style="font-size:10px; color:var(--text-d); font-family:var(--ui-font); letter-spacing:.08em; text-align:center;">
+    WASD / Arrow Keys to move &nbsp;·&nbsp; Mouse aim + click / Space to shoot &nbsp;·&nbsp; Shift for Special
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     GAME SCREEN
+═══════════════════════════════════════ -->
+<div id="gameScreen" class="screen hidden">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-left">
+      <div class="hud-label">Health</div>
+      <div id="hearts">❤️❤️❤️</div>
+      <div id="manaWrap">
+        <div class="hud-label">Mana</div>
+        <div id="manaBar"><div id="manaFill" style="width:100%"></div></div>
+      </div>
+      <div id="specialReady" style="display:none">✦ SPECIAL READY</div>
+    </div>
+    <div class="hud-right" style="text-align:right; align-items:flex-end;">
+      <div class="hud-label">Score</div>
+      <div class="hud-val" id="scoreHud">0</div>
+      <div class="hud-label" style="margin-top:4px;">Kills</div>
+      <div class="hud-val" id="killsHud">0</div>
+    </div>
+  </div>
+
+  <div id="hudCenter">
+    <div class="hud-label" id="waveLabel">Wave</div>
+    <div id="waveVal">1</div>
+  </div>
+
+  <div id="waveBanner"></div>
+
+  <div id="controlsBar">
+    WASD Move &nbsp;·&nbsp; Mouse/Touch Aim &nbsp;·&nbsp; Click/Space Shoot &nbsp;·&nbsp; Shift Special
+  </div>
+
+  <!-- Mobile touch zones -->
+  <div id="touchLeft"></div>
+  <div id="touchRight"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     DEATH SCREEN
+═══════════════════════════════════════ -->
+<div id="deathScreen" class="screen hidden">
+  <div id="deathIcon">💀</div>
+  <div id="deathTitle">Defeated</div>
+  <div id="deathMsg">The grimoires have overwhelmed you. The arcane void claims another soul.</div>
+  <div id="deathStats">
+    <div class="dstat"><span class="dstat-l">Wave</span><span class="dstat-v" id="dWave">–</span></div>
+    <div class="dstat"><span class="dstat-l">Score</span><span class="dstat-v" id="dScore">–</span></div>
+    <div class="dstat"><span class="dstat-l">Kills</span><span class="dstat-v" id="dKills">–</span></div>
+    <div class="dstat"><span class="dstat-l">Time</span><span class="dstat-v" id="dTime">–</span></div>
+  </div>
+  <div class="death-btns">
+    <button class="btn" id="retryBtn">⟳ Try Again</button>
+    <button class="btn secondary" id="menuBtn">← Mage Select</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   GRIMOIRE WARS — Arcane Bullet Hell
+   Single file · Canvas 2D · No dependencies
+   GitHub Pages ready · Mobile + Desktop
+═══════════════════════════════════════════════════════ */
+
+// ── Screens ──
+const selectScreen = document.getElementById('selectScreen');
+const gameScreen   = document.getElementById('gameScreen');
+const deathScreen  = document.getElementById('deathScreen');
+
+function showScreen(el) {
+  [selectScreen, gameScreen, deathScreen].forEach(s => s.classList.add('hidden'));
+  el.classList.remove('hidden');
+}
+
+// ══════════════════════════════════════
+// MAGE DEFINITIONS
+// ══════════════════════════════════════
+const MAGES = {
+  pyro: {
+    emoji: '🧙‍♂️', name: 'Pyromancer',
+    hp: 3, speed: 200,
+    shootCooldown: 0.22,   // seconds between shots
+    bulletColor: '#ff6622', bulletEmoji: '🔥', bulletSpeed: 480, bulletDmg: 1,
+    bulletCount: 3,        // spread shots
+    spreadAngle: 0.32,     // radians between spread bullets
+    piercing: false,
+    specialCooldown: 12,
+    special: 'inferno',    // fires ring of bullets in all directions
+    specialEmoji: '🔥',
+    manaRegen: 0.18,
+  },
+  frost: {
+    emoji: '🧝‍♀️', name: 'Frostweaver',
+    hp: 4, speed: 170,
+    shootCooldown: 0.55,
+    bulletColor: '#88ddff', bulletEmoji: '❄️', bulletSpeed: 600, bulletDmg: 3,
+    bulletCount: 1,
+    spreadAngle: 0,
+    piercing: true,        // bullets pass through enemies
+    specialCooldown: 14,
+    special: 'freeze',     // slows all enemies
+    specialEmoji: '❄️',
+    manaRegen: 0.14,
+  },
+  storm: {
+    emoji: '🧙‍♀️', name: 'Stormcaller',
+    hp: 2, speed: 260,
+    shootCooldown: 0.10,
+    bulletColor: '#ffee44', bulletEmoji: '⚡', bulletSpeed: 540, bulletDmg: 1,
+    bulletCount: 1,
+    spreadAngle: 0,
+    piercing: false,
+    specialCooldown: 10,
+    special: 'storm',      // hits all enemies on screen
+    specialEmoji: '⚡',
+    manaRegen: 0.22,
+  },
+};
+
+// ══════════════════════════════════════
+// ENEMY DEFINITIONS
+// ══════════════════════════════════════
+const ENEMY_TYPES = [
+  {
+    id: 'imp',
+    emoji: '📕', name: 'Imp Tome',
+    hp: 2, speed: 90, size: 22,
+    color: '#cc3333',
+    score: 10,
+    behavior: 'chase',     // moves straight toward player
+    shootCooldown: 0,      // doesn't shoot
+    bulletSpeed: 0, bulletDmg: 0,
+    minWave: 1,
+  },
+  {
+    id: 'hex',
+    emoji: '📗', name: 'Hex Book',
+    hp: 5, speed: 60, size: 24,
+    color: '#33aa44',
+    score: 25,
+    behavior: 'orbit',     // orbits player and shoots
+    shootCooldown: 1.8,
+    bulletSpeed: 200, bulletDmg: 1,
+    bulletColor: '#88ff88',
+    minWave: 2,
+  },
+  {
+    id: 'void',
+    emoji: '📘', name: 'Void Codex',
+    hp: 8, speed: 110, size: 26,
+    color: '#3355cc',
+    score: 50,
+    behavior: 'zigzag',    // zigzag then fires spread
+    shootCooldown: 2.2,
+    bulletSpeed: 220, bulletDmg: 1,
+    bulletColor: '#aabbff',
+    spreadCount: 3,
+    minWave: 4,
+  },
+  {
+    id: 'necronomicon',
+    emoji: '📙', name: 'Dark Tome',
+    hp: 12, speed: 75, size: 28,
+    color: '#cc8833',
+    score: 75,
+    behavior: 'strafe',    // moves side to side and fires 5-way spread
+    shootCooldown: 1.5,
+    bulletSpeed: 240, bulletDmg: 1,
+    bulletColor: '#ffbb44',
+    spreadCount: 5,
+    minWave: 6,
+  },
+];
+
+// Boss appears every 5 waves
+const BOSS = {
+  id: 'boss',
+  emoji: '📓', name: 'Grimoire Lord',
+  hp: 60, speed: 55, size: 48,
+  color: '#8822cc',
+  score: 500,
+  behavior: 'boss',
+  shootCooldown: 0.6,
+  bulletSpeed: 190, bulletDmg: 1,
+  bulletColor: '#cc88ff',
+  spreadCount: 8,
+  minWave: 5,
+};
+
+// ══════════════════════════════════════
+// CANVAS SETUP
+// ══════════════════════════════════════
+const canvas  = document.getElementById('gameCanvas');
+const ctx     = canvas.getContext('2d');
+
+let W = 0, H = 0; // set in resize()
+
+function resizeCanvas() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', () => { resizeCanvas(); });
+resizeCanvas();
+
+// ══════════════════════════════════════
+// GAME STATE
+// ══════════════════════════════════════
+let G = {}; // populated in startGame()
+
+function makeGame(mageKey) {
+  const mage = MAGES[mageKey];
+  return {
+    mageKey,
+    mage,
+
+    // Player
+    px: W / 2, py: H / 2,     // position
+    pangle: 0,                  // facing angle (toward mouse)
+    pvx: 0, pvy: 0,             // velocity
+    hp: mage.hp, hpMax: mage.hp,
+    mana: 0, manaMax: 100,
+    shootTimer: 0,
+    specialTimer: 0,            // cooldown remaining
+    invincible: 0,              // iframes after being hit
+    size: 20,
+
+    // Collections
+    bullets:      [],           // player bullets
+    enemyBullets: [],           // enemy bullets
+    enemies:      [],
+    particles:    [],
+    pickups:      [],           // health drops
+
+    // Wave
+    wave: 1,
+    waveTimer: 0,               // time until next wave spawns
+    waveActive: false,          // enemies currently alive
+    betweenWaves: true,
+    betweenTimer: 3,            // countdown before wave starts
+
+    // Score
+    score: 0,
+    kills: 0,
+
+    // Effects
+    screenShake: 0,
+    freezeTimer: 0,             // enemy slow effect
+
+    // Input
+    keys: {},
+    mouseX: W / 2, mouseY: H / 2,
+    shooting: false,
+
+    // Timing
+    elapsed: 0,
+    running: true,
+  };
+}
+
+// ══════════════════════════════════════
+// INPUT
+// ══════════════════════════════════════
+function attachInput() {
+  document.addEventListener('keydown', e => {
+    if (!G.keys) return;
+    G.keys[e.code] = true;
+    if (e.code === 'Space') { e.preventDefault(); G.shooting = true; }
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') useSpecial();
+  });
+  document.addEventListener('keyup', e => {
+    if (!G.keys) return;
+    G.keys[e.code] = false;
+    if (e.code === 'Space') G.shooting = false;
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!G) return;
+    G.mouseX = e.clientX; G.mouseY = e.clientY;
+  });
+  canvas.addEventListener('mousedown', e => {
+    if (!G) return;
+    G.mouseX = e.clientX; G.mouseY = e.clientY;
+    G.shooting = true;
+  });
+  canvas.addEventListener('mouseup', () => { if (G) G.shooting = false; });
+
+  // Touch: left half = move joystick, right half = aim+shoot
+  let moveTouch = null, aimTouch = null;
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.clientX < W / 2 && !moveTouch) {
+        moveTouch = { id: t.identifier, sx: t.clientX, sy: t.clientY };
+      } else if (t.clientX >= W / 2 && !aimTouch) {
+        aimTouch = { id: t.identifier };
+        G.mouseX = t.clientX; G.mouseY = t.clientY;
+        G.shooting = true;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (moveTouch && t.identifier === moveTouch.id) {
+        const dx = t.clientX - moveTouch.sx;
+        const dy = t.clientY - moveTouch.sy;
+        const dead = 12;
+        G.touchMoveX = Math.abs(dx) > dead ? dx / 60 : 0;
+        G.touchMoveY = Math.abs(dy) > dead ? dy / 60 : 0;
+      }
+      if (aimTouch && t.identifier === aimTouch.id) {
+        G.mouseX = t.clientX; G.mouseY = t.clientY;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (moveTouch && t.identifier === moveTouch.id) {
+        moveTouch = null;
+        G.touchMoveX = 0; G.touchMoveY = 0;
+      }
+      if (aimTouch && t.identifier === aimTouch.id) {
+        aimTouch = null; G.shooting = false;
+      }
+    }
+  }, { passive: false });
+}
+
+// ══════════════════════════════════════
+// WAVE SPAWNING
+// ══════════════════════════════════════
+function spawnWave(wave) {
+  const isBossWave = wave % 5 === 0;
+  showBanner(isBossWave ? `⚠ GRIMOIRE LORD ⚠` : `Wave ${wave}`);
+
+  if (isBossWave) {
+    spawnEnemy(BOSS, W / 2, 80);
+    return;
+  }
+
+  // Determine which enemy types are available
+  const available = ENEMY_TYPES.filter(t => t.minWave <= wave);
+
+  // Number of enemies scales with wave
+  const count = 3 + Math.floor(wave * 1.4);
+
+  for (let i = 0; i < count; i++) {
+    const type = available[Math.floor(Math.random() * available.length)];
+    // Spawn on edges
+    let ex, ey;
+    const side = Math.floor(Math.random() * 4);
+    if (side === 0) { ex = Math.random() * W; ey = -40; }
+    else if (side === 1) { ex = W + 40; ey = Math.random() * H; }
+    else if (side === 2) { ex = Math.random() * W; ey = H + 40; }
+    else { ex = -40; ey = Math.random() * H; }
+    spawnEnemy(type, ex, ey);
+  }
+}
+
+function spawnEnemy(type, x, y) {
+  G.enemies.push({
+    type,
+    x, y,
+    hp: type.hp, hpMax: type.hp,
+    size: type.size,
+    shootTimer: type.shootCooldown * Math.random(), // stagger their shoots
+    orbitAngle: Math.random() * Math.PI * 2,
+    zigDir: 1,
+    zigTimer: 0,
+    hitFlash: 0,
+    dead: false,
+  });
+}
+
+// ══════════════════════════════════════
+// BULLET FACTORIES
+// ══════════════════════════════════════
+function firePlayerBullet(angle) {
+  const mage = G.mage;
+  const count = mage.bulletCount;
+  const spread = mage.spreadAngle;
+
+  for (let i = 0; i < count; i++) {
+    const a = angle + (i - (count - 1) / 2) * spread;
+    G.bullets.push({
+      x: G.px, y: G.py,
+      vx: Math.cos(a) * mage.bulletSpeed,
+      vy: Math.sin(a) * mage.bulletSpeed,
+      color: mage.bulletColor,
+      emoji: mage.bulletEmoji,
+      dmg: mage.bulletDmg,
+      piercing: mage.piercing,
+      size: 8,
+      life: 2.0,
+    });
+  }
+}
+
+function fireEnemyBullet(en, angle, speed, dmg, color, count = 1, spread = 0) {
+  for (let i = 0; i < count; i++) {
+    const a = angle + (i - (count - 1) / 2) * (spread / Math.max(1, count - 1));
+    G.enemyBullets.push({
+      x: en.x, y: en.y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      color: color || en.type.bulletColor,
+      size: 6,
+      dmg: dmg || en.type.bulletDmg,
+      life: 3.0,
+    });
+  }
+}
+
+// ══════════════════════════════════════
+// SPECIAL ABILITIES
+// ══════════════════════════════════════
+function useSpecial() {
+  if (G.mana < G.manaMax) return; // need full mana
+  G.mana = 0;
+  G.specialTimer = G.mage.specialCooldown;
+  updateManaUI();
+
+  const special = G.mage.special;
+
+  if (special === 'inferno') {
+    // Ring of 24 fire bullets
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      G.bullets.push({
+        x: G.px, y: G.py,
+        vx: Math.cos(a) * 360,
+        vy: Math.sin(a) * 360,
+        color: '#ff4400', emoji: '🔥',
+        dmg: 2, piercing: true,
+        size: 10, life: 1.5,
+      });
+    }
+    spawnParticleRing(G.px, G.py, '#ff6622', 30);
+  }
+
+  if (special === 'freeze') {
+    G.freezeTimer = 3.5;
+    spawnParticleRing(G.px, G.py, '#88ddff', 24);
+    showBanner('❄ FROZEN ❄');
+    setTimeout(() => hideBanner(), 1200);
+  }
+
+  if (special === 'storm') {
+    // Hit every enemy for 3 damage
+    G.enemies.forEach(en => {
+      if (!en.dead) {
+        hitEnemy(en, 3);
+        spawnParticles(en.x, en.y, '#ffee44', 6);
+      }
+    });
+    spawnParticleRing(W / 2, H / 2, '#ffee44', 40);
+    showBanner('⚡ LIGHTNING STORM ⚡');
+    setTimeout(() => hideBanner(), 1200);
+  }
+}
+
+// ══════════════════════════════════════
+// DAMAGE & HIT LOGIC
+// ══════════════════════════════════════
+function hitEnemy(en, dmg) {
+  en.hp -= dmg;
+  en.hitFlash = 0.15;
+  if (en.hp <= 0) killEnemy(en);
+}
+
+function killEnemy(en) {
+  en.dead = true;
+  G.score += en.type.score;
+  G.kills++;
+  spawnParticles(en.x, en.y, en.type.color, 10);
+  // Small chance to drop health pickup
+  if (G.hp < G.hpMax && Math.random() < 0.15) {
+    G.pickups.push({ x: en.x, y: en.y, life: 8 });
+  }
+  updateScoreUI();
+}
+
+function hitPlayer(dmg) {
+  if (G.invincible > 0) return;
+  G.hp -= dmg;
+  G.invincible = 1.4; // seconds of iframes
+  G.screenShake = 0.4;
+  updateHeartsUI();
+  if (G.hp <= 0) endGame();
+}
+
+// ══════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 60 + Math.random() * 160;
+    G.particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color,
+      size: 2 + Math.random() * 4,
+      life: 0.4 + Math.random() * 0.5,
+      maxLife: 0.5,
+    });
+  }
+}
+
+function spawnParticleRing(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const speed = 120 + Math.random() * 80;
+    G.particles.push({
+      x, y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      color, size: 3 + Math.random() * 3,
+      life: 0.7 + Math.random() * 0.3,
+      maxLife: 0.7,
+    });
+  }
+}
+
+// ══════════════════════════════════════
+// WAVE BANNER
+// ══════════════════════════════════════
+const bannerEl = document.getElementById('waveBanner');
+let bannerTimeout = null;
+
+function showBanner(text) {
+  bannerEl.textContent = text;
+  bannerEl.classList.add('show');
+  clearTimeout(bannerTimeout);
+  bannerTimeout = setTimeout(hideBanner, 2000);
+}
+function hideBanner() { bannerEl.classList.remove('show'); }
+
+// ══════════════════════════════════════
+// UI UPDATES
+// ══════════════════════════════════════
+function updateHeartsUI() {
+  const h = document.getElementById('hearts');
+  h.textContent = '❤️'.repeat(Math.max(0, G.hp)) + '🖤'.repeat(Math.max(0, G.hpMax - G.hp));
+}
+function updateManaUI() {
+  const pct = (G.mana / G.manaMax) * 100;
+  document.getElementById('manaFill').style.width = pct + '%';
+  const sr = document.getElementById('specialReady');
+  sr.style.display = G.mana >= G.manaMax ? '' : 'none';
+}
+function updateScoreUI() {
+  document.getElementById('scoreHud').textContent = G.score.toLocaleString();
+  document.getElementById('killsHud').textContent = G.kills;
+}
+function updateWaveUI() {
+  document.getElementById('waveVal').textContent = G.wave;
+}
+
+// ══════════════════════════════════════
+// COLLISION DETECTION (circle-circle)
+// ══════════════════════════════════════
+function dist2(ax, ay, bx, by) {
+  const dx = ax - bx, dy = ay - by;
+  return dx * dx + dy * dy;
+}
+function collide(ax, ay, ar, bx, by, br) {
+  const r = ar + br;
+  return dist2(ax, ay, bx, by) < r * r;
+}
+
+// ══════════════════════════════════════
+// BACKGROUND STARS
+// ══════════════════════════════════════
+const STARS = Array.from({ length: 120 }, () => ({
+  x: Math.random(), y: Math.random(),
+  r: 0.5 + Math.random() * 1.2,
+  speed: 0.04 + Math.random() * 0.08,
+  alpha: 0.2 + Math.random() * 0.5,
+}));
+
+function drawBackground() {
+  // Deep void gradient
+  const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+  bg.addColorStop(0, '#12082e');
+  bg.addColorStop(1, '#060412');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Drifting stars
+  STARS.forEach(s => {
+    s.y += s.speed * 0.001;
+    if (s.y > 1) s.y = 0;
+    ctx.globalAlpha = s.alpha;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Arena boundary hex glow
+  const cx = W/2, cy = H/2;
+  const arenaR = Math.min(W, H) * 0.47;
+  const grad = ctx.createRadialGradient(cx, cy, arenaR * 0.85, cx, cy, arenaR);
+  grad.addColorStop(0, 'rgba(80,40,160,0)');
+  grad.addColorStop(1, 'rgba(120,60,220,0.18)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, arenaR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Arena border ring
+  ctx.strokeStyle = 'rgba(160,80,255,0.35)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, arenaR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Ground rune marks (decorative circles)
+  ctx.strokeStyle = 'rgba(100,60,180,0.12)';
+  ctx.lineWidth = 1;
+  [0.25, 0.38, 0.47].forEach(r => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, arenaR * r, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+}
+
+// Arena radius for boundary clamping
+function getArenaR() { return Math.min(W, H) * 0.47; }
+
+// ══════════════════════════════════════
+// DRAW HELPERS
+// ══════════════════════════════════════
+function drawEmoji(emoji, x, y, size, alpha = 1) {
+  ctx.globalAlpha = alpha;
+  ctx.font = `${size}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, x, y);
+  ctx.globalAlpha = 1;
+}
+
+function drawGlow(x, y, r, color, alpha = 0.4) {
+  ctx.globalAlpha = alpha;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+// ══════════════════════════════════════
+// MAIN UPDATE
+// ══════════════════════════════════════
+function update(dt) {
+  if (!G.running) return;
+
+  G.elapsed += dt;
+  G.invincible   = Math.max(0, G.invincible - dt);
+  G.screenShake  = Math.max(0, G.screenShake - dt * 3);
+  G.freezeTimer  = Math.max(0, G.freezeTimer - dt);
+
+  updatePlayer(dt);
+  updateBullets(dt);
+  updateEnemies(dt);
+  updateParticles(dt);
+  updatePickups(dt);
+  updateWaveLogic(dt);
+
+  // Mana regeneration
+  G.mana = Math.min(G.manaMax, G.mana + G.mage.manaRegen * dt * G.manaMax);
+  updateManaUI();
+}
+
+function updatePlayer(dt) {
+  const spd = G.mage.speed;
+  let mvx = 0, mvy = 0;
+
+  // Keyboard
+  if (G.keys['KeyW'] || G.keys['ArrowUp'])    mvy -= 1;
+  if (G.keys['KeyS'] || G.keys['ArrowDown'])  mvy += 1;
+  if (G.keys['KeyA'] || G.keys['ArrowLeft'])  mvx -= 1;
+  if (G.keys['KeyD'] || G.keys['ArrowRight']) mvx += 1;
+
+  // Touch joystick
+  if (G.touchMoveX || G.touchMoveY) {
+    mvx += G.touchMoveX || 0;
+    mvy += G.touchMoveY || 0;
+  }
+
+  // Normalize diagonal
+  const len = Math.sqrt(mvx * mvx + mvy * mvy);
+  if (len > 0) { mvx /= len; mvy /= len; }
+
+  G.px += mvx * spd * dt;
+  G.py += mvy * spd * dt;
+
+  // Clamp to arena circle
+  const ar = getArenaR();
+  const cx = W / 2, cy = H / 2;
+  const pdx = G.px - cx, pdy = G.py - cy;
+  const pd  = Math.sqrt(pdx * pdx + pdy * pdy);
+  if (pd > ar - G.size) {
+    G.px = cx + (pdx / pd) * (ar - G.size);
+    G.py = cy + (pdy / pd) * (ar - G.size);
+  }
+
+  // Aim angle toward mouse
+  G.pangle = Math.atan2(G.mouseY - G.py, G.mouseX - G.px);
+
+  // Auto-shoot
+  G.shootTimer = Math.max(0, G.shootTimer - dt);
+  if (G.shooting && G.shootTimer <= 0 && !G.betweenWaves) {
+    firePlayerBullet(G.pangle);
+    G.shootTimer = G.mage.shootCooldown;
+  }
+}
+
+function updateBullets(dt) {
+  const ar = getArenaR();
+  const cx = W / 2, cy = H / 2;
+
+  // Player bullets
+  G.bullets = G.bullets.filter(b => {
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.life -= dt;
+    // Remove if out of arena or expired
+    const d2 = (b.x-cx)*(b.x-cx) + (b.y-cy)*(b.y-cy);
+    if (b.life <= 0 || d2 > ar * ar * 1.1) return false;
+    // Check enemy collisions
+    let hit = false;
+    for (const en of G.enemies) {
+      if (en.dead) continue;
+      if (collide(b.x, b.y, b.size, en.x, en.y, en.size)) {
+        hitEnemy(en, b.dmg);
+        if (!b.piercing) { hit = true; break; }
+      }
+    }
+    return !hit;
+  });
+
+  // Enemy bullets
+  G.enemyBullets = G.enemyBullets.filter(b => {
+    const frozen = G.freezeTimer > 0;
+    if (!frozen) {
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+    }
+    b.life -= dt;
+    const d2 = (b.x-cx)*(b.x-cx) + (b.y-cy)*(b.y-cy);
+    if (b.life <= 0 || d2 > ar * ar * 1.2) return false;
+    // Hit player
+    if (G.invincible <= 0 && collide(b.x, b.y, b.size, G.px, G.py, G.size - 4)) {
+      hitPlayer(b.dmg);
+      return false;
+    }
+    return true;
+  });
+}
+
+function updateEnemies(dt) {
+  const frozen = G.freezeTimer > 0;
+  const slowMult = frozen ? 0.25 : 1;
+
+  G.enemies.forEach(en => {
+    if (en.dead) return;
+    en.hitFlash = Math.max(0, en.hitFlash - dt);
+
+    const dx = G.px - en.x, dy = G.py - en.y;
+    const d  = Math.sqrt(dx * dx + dy * dy);
+    const spd = en.type.speed * slowMult;
+    const angleToPlayer = Math.atan2(dy, dx);
+
+    // ── Behaviors ──
+    if (en.type.behavior === 'chase') {
+      if (d > en.size + G.size) {
+        en.x += (dx / d) * spd * dt;
+        en.y += (dy / d) * spd * dt;
+      } else {
+        // Ram player
+        hitPlayer(1);
+        en.hp = 0; killEnemy(en);
+      }
+    }
+
+    if (en.type.behavior === 'orbit') {
+      en.orbitAngle += 0.8 * dt * slowMult;
+      const orbitR = 180;
+      const tx = G.px + Math.cos(en.orbitAngle) * orbitR;
+      const ty = G.py + Math.sin(en.orbitAngle) * orbitR;
+      en.x += (tx - en.x) * 2.5 * dt;
+      en.y += (ty - en.y) * 2.5 * dt;
+    }
+
+    if (en.type.behavior === 'zigzag') {
+      en.zigTimer -= dt;
+      if (en.zigTimer <= 0) { en.zigDir *= -1; en.zigTimer = 0.5 + Math.random() * 0.5; }
+      // Move toward player with perpendicular zigzag
+      const perpX = -dy / (d || 1), perpY = dx / (d || 1);
+      en.x += ((dx / (d||1)) * 0.7 + perpX * en.zigDir * 0.7) * spd * dt;
+      en.y += ((dy / (d||1)) * 0.7 + perpY * en.zigDir * 0.7) * spd * dt;
+    }
+
+    if (en.type.behavior === 'strafe') {
+      en.zigTimer -= dt;
+      if (en.zigTimer <= 0) { en.zigDir *= -1; en.zigTimer = 1.0 + Math.random(); }
+      // Stay at mid-range, strafe sideways
+      const targetDist = 220;
+      const radial  = ((d - targetDist) / targetDist) * spd;
+      const perpX = -dy / (d||1), perpY = dx / (d||1);
+      en.x += ((dx/(d||1)) * radial + perpX * en.zigDir * spd) * dt;
+      en.y += ((dy/(d||1)) * radial + perpY * en.zigDir * spd) * dt;
+    }
+
+    if (en.type.behavior === 'boss') {
+      // Boss: slow approach + circular spiral
+      en.orbitAngle += 0.3 * dt;
+      en.x += (dx / (d||1)) * spd * dt * 0.5;
+      en.y += (dy / (d||1)) * spd * dt * 0.5;
+    }
+
+    // ── Clamp to arena ──
+    const ar = getArenaR();
+    const cx = W/2, cy = H/2;
+    const edx = en.x - cx, edy = en.y - cy;
+    const ed  = Math.sqrt(edx*edx + edy*edy);
+    if (ed > ar - en.size) {
+      en.x = cx + (edx/ed)*(ar - en.size);
+      en.y = cy + (edy/ed)*(ar - en.size);
+    }
+
+    // ── Enemy shooting ──
+    if (en.type.shootCooldown > 0 && !frozen) {
+      en.shootTimer -= dt;
+      if (en.shootTimer <= 0) {
+        en.shootTimer = en.type.shootCooldown * (0.8 + Math.random() * 0.4);
+        const spread = en.type.spreadCount || 1;
+
+        if (en.type.behavior === 'boss') {
+          // Boss: rotating spread pattern
+          const bossSpread = en.type.spreadCount || 8;
+          for (let i = 0; i < bossSpread; i++) {
+            const a = en.orbitAngle + (i / bossSpread) * Math.PI * 2;
+            G.enemyBullets.push({
+              x: en.x, y: en.y,
+              vx: Math.cos(a) * en.type.bulletSpeed,
+              vy: Math.sin(a) * en.type.bulletSpeed,
+              color: en.type.bulletColor, size: 7,
+              dmg: en.type.bulletDmg, life: 3,
+            });
+          }
+        } else if (spread > 1) {
+          // Spread shot toward player
+          fireEnemyBullet(en, angleToPlayer, en.type.bulletSpeed,
+            en.type.bulletDmg, en.type.bulletColor, spread,
+            (spread - 1) * 0.28);
+        } else {
+          // Single aimed shot
+          G.enemyBullets.push({
+            x: en.x, y: en.y,
+            vx: Math.cos(angleToPlayer) * en.type.bulletSpeed,
+            vy: Math.sin(angleToPlayer) * en.type.bulletSpeed,
+            color: en.type.bulletColor, size: 6,
+            dmg: en.type.bulletDmg, life: 3,
+          });
+        }
+      }
+    }
+
+    // Touch-collision with player (for chasers that don't die on ram)
+    if (en.type.behavior !== 'chase' && G.invincible <= 0) {
+      if (collide(en.x, en.y, en.size, G.px, G.py, G.size - 4)) {
+        hitPlayer(1);
+      }
+    }
+  });
+
+  // Remove dead enemies
+  G.enemies = G.enemies.filter(en => !en.dead);
+}
+
+function updateParticles(dt) {
+  G.particles = G.particles.filter(p => {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.9;
+    p.vy *= 0.9;
+    p.life -= dt;
+    return p.life > 0;
+  });
+}
+
+function updatePickups(dt) {
+  G.pickups = G.pickups.filter(pk => {
+    pk.life -= dt;
+    if (collide(pk.x, pk.y, 12, G.px, G.py, G.size)) {
+      G.hp = Math.min(G.hpMax, G.hp + 1);
+      updateHeartsUI();
+      spawnParticles(pk.x, pk.y, '#ff6688', 6);
+      return false;
+    }
+    return pk.life > 0;
+  });
+}
+
+function updateWaveLogic(dt) {
+  if (G.betweenWaves) {
+    G.betweenTimer -= dt;
+    if (G.betweenTimer <= 0) {
+      G.betweenWaves = false;
+      G.waveActive   = true;
+      spawnWave(G.wave);
+      updateWaveUI();
+    }
+    return;
+  }
+
+  // Wave complete when no enemies remain
+  if (G.waveActive && G.enemies.length === 0) {
+    G.waveActive   = false;
+    G.wave++;
+    G.betweenWaves = true;
+    G.betweenTimer = 3.5;
+    showBanner('Wave Clear! ✦');
+    setTimeout(hideBanner, 2000);
+  }
+}
+
+// ══════════════════════════════════════
+// MAIN DRAW
+// ══════════════════════════════════════
+function draw() {
+  ctx.save();
+
+  // Screen shake
+  if (G.screenShake > 0) {
+    const sh = G.screenShake * 10;
+    ctx.translate(
+      (Math.random() - 0.5) * sh,
+      (Math.random() - 0.5) * sh
+    );
+  }
+
+  drawBackground();
+
+  // Draw pickups
+  G.pickups.forEach(pk => {
+    drawEmoji('❤️', pk.x, pk.y, 20);
+  });
+
+  // Draw player bullets
+  G.bullets.forEach(b => {
+    drawGlow(b.x, b.y, 18, b.color, 0.35);
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+    ctx.fill();
+    drawEmoji(b.emoji, b.x, b.y, 14);
+  });
+
+  // Draw enemy bullets
+  G.enemyBullets.forEach(b => {
+    const frozen = G.freezeTimer > 0;
+    drawGlow(b.x, b.y, 14, frozen ? '#88ddff' : b.color, 0.3);
+    ctx.fillStyle = frozen ? '#aaeeff' : b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Draw enemies
+  G.enemies.forEach(en => {
+    if (en.dead) return;
+
+    // Glow under enemy
+    drawGlow(en.x, en.y, en.size * 2.2, en.type.color, 0.25);
+
+    // Hit flash
+    if (en.hitFlash > 0) {
+      ctx.globalAlpha = en.hitFlash / 0.15;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(en.x, en.y, en.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Frozen tint
+    if (G.freezeTimer > 0) {
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = '#88ddff';
+      ctx.beginPath();
+      ctx.arc(en.x, en.y, en.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Emoji
+    const sz = en.type.behavior === 'boss' ? 52 : 28;
+    drawEmoji(en.type.emoji, en.x, en.y, sz);
+
+    // Health bar
+    const bw = en.size * 2.2, bh = 4;
+    const bx = en.x - bw/2, by = en.y - en.size - 8;
+    const hpPct = en.hp / en.hpMax;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = hpPct > 0.5 ? '#44cc44' : hpPct > 0.25 ? '#ccaa22' : '#cc2222';
+    ctx.fillRect(bx, by, bw * hpPct, bh);
+  });
+
+  // Draw player
+  const alpha = G.invincible > 0 ? (Math.sin(G.elapsed * 20) > 0 ? 0.4 : 1) : 1;
+  drawGlow(G.px, G.py, 40,
+    G.mageKey === 'pyro' ? '#ff4400' :
+    G.mageKey === 'frost' ? '#4488ff' : '#ffee00',
+    0.28);
+  drawEmoji(G.mage.emoji, G.px, G.py, 36, alpha);
+
+  // Aim indicator (small arrow dot)
+  const aimDist = G.size + 10;
+  ctx.globalAlpha = 0.6 * alpha;
+  ctx.fillStyle = G.mage.bulletColor;
+  ctx.beginPath();
+  ctx.arc(
+    G.px + Math.cos(G.pangle) * aimDist,
+    G.py + Math.sin(G.pangle) * aimDist,
+    3.5, 0, Math.PI * 2
+  );
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Draw particles
+  G.particles.forEach(p => {
+    const a = p.life / p.maxLife;
+    ctx.globalAlpha = Math.min(1, a * 2);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Between-waves countdown
+  if (G.betweenWaves && G.betweenTimer > 0) {
+    ctx.font = `bold ${Math.floor(48 + Math.sin(G.elapsed*4)*4)}px 'Cinzel', serif`;
+    ctx.fillStyle = 'rgba(200,160,60,0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const cd = Math.ceil(G.betweenTimer);
+    if (cd <= 3) ctx.fillText(cd > 0 ? cd : '', W/2, H/2 + 60);
+  }
+
+  ctx.restore();
+}
+
+// ══════════════════════════════════════
+// GAME LOOP
+// ══════════════════════════════════════
+let lastTime = 0;
+let loopId   = null;
+
+function gameLoop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05); // cap 50ms
+  lastTime = ts;
+  update(dt);
+  draw();
+  loopId = requestAnimationFrame(gameLoop);
+}
+
+// ══════════════════════════════════════
+// START / END / MENU
+// ══════════════════════════════════════
+let selectedMage = 'pyro';
+
+function startGame() {
+  resizeCanvas();
+  G = makeGame(selectedMage);
+  G.touchMoveX = 0; G.touchMoveY = 0;
+
+  updateHeartsUI();
+  updateManaUI();
+  updateScoreUI();
+  updateWaveUI();
+
+  showScreen(gameScreen);
+
+  cancelAnimationFrame(loopId);
+  lastTime = performance.now();
+  loopId = requestAnimationFrame(gameLoop);
+
+  // Show controls on mobile
+  const isMobile = 'ontouchstart' in window;
+  document.getElementById('touchLeft').style.display  = isMobile ? 'block' : 'none';
+  document.getElementById('touchRight').style.display = isMobile ? 'block' : 'none';
+  document.getElementById('controlsBar').style.display = isMobile ? 'none' : '';
+}
+
+function endGame() {
+  G.running = false;
+  cancelAnimationFrame(loopId);
+
+  // Populate death screen
+  document.getElementById('dWave').textContent  = G.wave;
+  document.getElementById('dScore').textContent = G.score.toLocaleString();
+  document.getElementById('dKills').textContent = G.kills;
+  const m = Math.floor(G.elapsed / 60), s = Math.floor(G.elapsed % 60);
+  document.getElementById('dTime').textContent  = `${m}:${s.toString().padStart(2,'0')}`;
+
+  // Flavour message
+  const msgs = [
+    'The grimoires hunger for more. Train harder.',
+    'The arcane void claims another soul.',
+    'Your runes were not enough. Rise again.',
+    'Even the greatest mages fall. Try once more.',
+  ];
+  document.getElementById('deathMsg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
+
+  setTimeout(() => showScreen(deathScreen), 600);
+}
+
+// ══════════════════════════════════════
+// MAGE SELECTION UI
+// ══════════════════════════════════════
+document.querySelectorAll('.mage-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.mage-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedMage = card.dataset.mage;
+  });
+  card.addEventListener('touchend', e => {
+    e.preventDefault();
+    document.querySelectorAll('.mage-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedMage = card.dataset.mage;
+  }, { passive: false });
+});
+
+// Select pyro by default
+document.querySelector('[data-mage="pyro"]').classList.add('selected');
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('startBtn').addEventListener('touchend', e => { e.preventDefault(); startGame(); }, { passive:false });
+
+document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('touchend', e => { e.preventDefault(); startGame(); }, { passive:false });
+
+document.getElementById('menuBtn').addEventListener('click', () => showScreen(selectScreen));
+document.getElementById('menuBtn').addEventListener('touchend', e => { e.preventDefault(); showScreen(selectScreen); }, { passive:false });
+
+// Attach input listeners once
+attachInput();
+</script>
+</body>
+</html>
